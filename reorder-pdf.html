@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reorder PDF Pages | FixMyPDF</title>
+    <meta name="description" content="Rearrange or sort your PDF pages dynamically with live drag-and-drop and precise gap placement rules.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="pdf-state.js"></script>
+    <script src="auto-loader.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .reorder-options-container {
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            margin-top: 24px;
+        }
+
+        .thumbnails-wrapper-frame {
+            margin-top: 24px;
+            border-top: 1px solid var(--border-color, #e2e8f0);
+            padding-top: 20px;
+        }
+
+        .reorder-flex-canvas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-top: 16px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 20px;
+            background: #F8FAFC;
+            border-radius: 12px;
+            border: 1px solid var(--border-color, #e2e8f0);
+        }
+
+        .thumbnail-card {
+            background: #FFFFFF;
+            border: 2px solid var(--border-color, #e2e8f0);
+            border-radius: 12px;
+            padding: 16px;
+            width: 190px; 
+            text-align: center;
+            cursor: grab;
+            position: relative;
+            transition: all 0.2s ease;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .thumbnail-card:active {
+            cursor: grabbing;
+        }
+
+        .thumbnail-card:hover {
+            border-color: #64748B;
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .thumbnail-card.selected-active {
+            border-color: var(--brand-color, #e5322d);
+            background: #FEF2F2;
+            box-shadow: 0 0 0 4px rgba(229, 50, 45, 0.15);
+        }
+
+        .thumbnail-card.dragging-element {
+            opacity: 0.4;
+            border-style: dashed;
+        }
+
+        .canvas-container-frame {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            background: #FFFFFF;
+            border-radius: 6px;
+        }
+
+        .thumbnail-card canvas {
+            max-width: 100%;
+            max-height: 180px; 
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+        }
+
+        .page-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main, #0f172a);
+            margin-top: 14px;
+            display: block;
+        }
+
+        .insertion-gap-target {
+            width: 28px;
+            height: 140px;
+            border: 2px dashed transparent;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            color: transparent;
+            font-size: 1.3rem;
+            margin: 0 -6px;
+        }
+
+        .reorder-flex-canvas.insertion-mode-active .insertion-gap-target {
+            border-color: #CBD5E1;
+            background: rgba(241, 245, 249, 0.9);
+            color: #94A3B8;
+        }
+
+        .reorder-flex-canvas.insertion-mode-active .insertion-gap-target:hover {
+            border-color: var(--brand-color, #e5322d);
+            background: #FEE2E2;
+            color: var(--brand-color, #e5322d);
+            transform: scale(1.15);
+        }
+
+        .thumbnail-card.drag-over-receive {
+            border-color: var(--brand-color, #e5322d);
+            background: #FEE2E2;
+            transform: scale(0.96);
+        }
+
+        /* FIX: Added the missing CSS class from the rotate page */
+        .hidden-panel {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <i class="ph-fill ph-wrench"></i>
+            FixMy<span>PDF</span>
+        </a>
+    </nav>
+
+    <main class="container" style="max-width: 950px; padding-top: 2rem;">
+
+        <div class="tool-header">
+            <h1>Reorder PDF Pages</h1>
+            <p>Drag and drop pages to rearrange, or select a page and tap any intermediate empty space gap to move it there instantly.</p>
+        </div>
+
+        <div id="drop-zone" class="drop-zone">
+            <i class="ph-duotone ph-list-numbers" style="color: var(--brand-color, #e5322d);"></i>
+            <h3>Choose a PDF document</h3>
+            <p>or drag and drop your .pdf here</p>
+            <input type="file" id="file-input" accept="application/pdf" hidden>
+        </div>
+
+        <div id="options-panel" class="reorder-options-container hidden-panel">
+            
+            <div class="file-info-row" style="margin-bottom: 24px; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                <div class="file-details">
+                    <h3 id="file-name-display" style="margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-fill ph-file-pdf" style="color: var(--brand-color, #e5322d);"></i> 
+                        <span>document.pdf</span>
+                    </h3>
+                    <p id="page-count-display" class="file-meta" style="font-size: 0.85rem; color: var(--text-muted, #64748b);">Detected pages</p>
+                </div>
+                <div class="file-actions-group" style="display: flex; gap: 10px;">
+                    <button id="view-pdf-btn" class="icon-btn" style="padding: 8px 12px; cursor: pointer;">
+                        <i class="ph-bold ph-eye"></i> View Original
+                    </button>
+                    <button id="remove-file-btn" class="icon-btn danger" style="padding: 8px 12px; cursor: pointer;">
+                        <i class="ph-bold ph-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+
+            <div style="background: #F1F5F9; padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; color: #475569; display: flex; align-items: center; gap: 8px;">
+                <i class="ph-bold ph-info" style="color: #64748B; font-size: 1.1rem;"></i>
+                <span><b>Interactive controls:</b> Click and drag pages around to sort them, or click any page to tap on the space gaps between items to position them.</span>
+            </div>
+
+            <div class="thumbnails-wrapper-frame">
+                <h4 style="color: var(--text-main, #0f172a); font-weight: 600;">Interactive Document Structure Plan</h4>
+                <div id="reorder-canvas" class="reorder-flex-canvas"></div>
+            </div>
+
+            <button id="convert-btn" class="action-btn" style="width: 100%; margin-top: 24px; padding: 14px; cursor: pointer;">
+                Save Reordered Layout Map
+                <i class="ph-bold ph-check"></i>
+            </button>
+
+            <p id="status-message" style="text-align: center; font-weight: 600; margin-top: 16px; min-height: 24px;"></p>
+
+        </div>
+
+    </main>
+
+    <div id="pdf-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>
+                    <i class="ph-fill ph-file-pdf" style="color: var(--brand-color, #e5322d);"></i>
+                    Original Source Document Preview
+                </h3>
+                <button id="close-modal-btn" class="close-modal-btn">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+            <iframe id="pdf-preview-frame" class="pdf-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <script src="reorder.js"></script>
+</body>
+</html>

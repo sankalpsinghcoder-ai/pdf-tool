@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert Excel to PDF | FixMyPDF</title>
+    <meta name="description" content="Convert Excel spreadsheets (XLSX, XLS) to premium PDF documents instantly and securely right in your browser.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="pdf-state.js"></script>
+    <script src="auto-loader.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        /* Excel Tool Workbook Specific Layout Overrides */
+        .excel-options-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            margin-top: 24px;
+        }
+
+        .settings-layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .settings-layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sheet Selection Tabs Area */
+        .sheet-tabs-row {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .sheet-tab {
+            background: #F1F5F9;
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+
+        .sheet-tab:hover {
+            background: #E2E8F0;
+            color: var(--text-main);
+        }
+
+        .sheet-tab.active-sheet {
+            background: #107C41; 
+            color: #FFFFFF;
+            border-color: #107C41;
+        }
+
+        /* Spreadsheet Visual Matrix Grid Previewer */
+        .spreadsheet-scroll-frame {
+            width: 100%;
+            max-height: 350px;
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: #F8FAFC;
+        }
+
+        .excel-preview-table {
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            width: 100%;
+            text-align: left;
+            background: #FFFFFF;
+        }
+
+        .excel-preview-table th {
+            background: #F1F5F9;
+            color: var(--text-main);
+            font-weight: 600;
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .excel-preview-table td {
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            color: #334155;
+        }
+
+        .excel-preview-table tr:nth-child(even) {
+            background: #F8FAFC;
+        }
+
+        .excel-accent-btn {
+            background-color: #107C41 !important;
+            color: #FFFFFF !important;
+        }
+        .excel-accent-btn:hover {
+            background-color: #0A5C30 !important;
+        }
+
+        .hidden-panel {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <i class="ph-fill ph-wrench"></i>
+            FixMy<span>PDF</span>
+        </a>
+    </nav>
+
+    <main class="container" style="max-width: 850px; padding-top: 2rem;">
+
+        <div class="tool-header">
+            <h1>Excel to PDF Converter</h1>
+            <p>Convert sheets, logs, tables, and full workbooks cleanly into optimized printable PDF layouts natively offline.</p>
+        </div>
+
+        <div id="drop-zone" class="drop-zone">
+            <i class="ph-duotone ph-file-xls" style="color: #107C41;"></i>
+            <h3>Choose an Excel document</h3>
+            <p>or drag and drop .xlsx or .xls files here</p>
+            <input type="file" id="file-input" accept=".xlsx, .xls" hidden>
+        </div>
+
+        <div id="options-panel" class="excel-options-container hidden-panel">
+            
+            <div class="file-info-row" style="margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+                <div class="file-details">
+                    <h3 id="file-name-display" style="margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-fill ph-file-xls" style="color: #107C41;"></i> 
+                        <span>data-sheet.xlsx</span>
+                    </h3>
+                    <p id="sheet-count-display" class="file-meta" style="font-size: 0.85rem; color: var(--text-muted);">Detected workbook sheet tabs</p>
+                </div>
+                <div class="file-actions-group" style="display: flex; gap: 10px;">
+                    <button id="view-pdf-btn" class="icon-btn hidden-panel">
+                        <i class="ph-bold ph-eye"></i> View PDF
+                    </button>
+                    <button id="remove-file-btn" class="icon-btn danger">
+                        <i class="ph-bold ph-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-layout-grid">
+                <div class="input-group">
+                    <label for="conversion-scope" style="font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: block;">Conversion Range Scope</label>
+                    <select id="conversion-scope" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); outline: none;">
+                        <option value="all" selected>Convert Entire Workbook (All Active Tabs into 1 PDF)</option>
+                        <option value="active">Convert Active Selected Sheet Only</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="page-orientation" style="font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: block;">Page Layout Orientation</label>
+                    <select id="page-orientation" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); outline: none;">
+                        <option value="landscape" selected>Landscape (Recommended for Spreadsheets)</option>
+                        <option value="portrait">Portrait (Standard Vertical)</option>
+                    </select>
+                </div>
+            </div>
+
+            <h4 style="margin-bottom: 8px; color: var(--text-main); font-weight: 600;">Workbook Sheets Filter Preview</h4>
+            <div id="sheet-tabs-row" class="sheet-tabs-row"></div>
+
+            <div class="spreadsheet-scroll-frame">
+                <table id="excel-preview-table" class="excel-preview-table"></table>
+            </div>
+
+            <button id="convert-btn" class="action-btn excel-accent-btn" style="width: 100%; margin-top: 24px; padding: 14px;">
+                Convert Excel to PDF
+                <i class="ph-bold ph-file-pdf"></i>
+            </button>
+
+	<!-- Add this button -->
+<div style="display: flex; gap: 12px; margin-top: 16px;">
+    <button id="apply-and-continue-btn" class="action-btn" style="background: #3B82F6; width: 100%;">
+        <i class="ph-bold ph-share-network"></i> Apply Changes & Continue Editing
+    </button>
+</div>
+
+            <p id="status-message" style="text-align: center; font-weight: 600; margin-top: 16px; min-height: 24px;"></p>
+
+        </div>
+
+    </main>
+
+    <div id="pdf-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>
+                    <i class="ph-fill ph-file-pdf" style="color: var(--brand-color);"></i>
+                    Compiled Sheet PDF Preview
+                </h3>
+                <button id="close-modal-btn" class="close-modal-btn">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+            <iframe id="pdf-preview-frame" class="pdf-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <script src="excel-to-pdf.js"></script>
+</body>
+</html>

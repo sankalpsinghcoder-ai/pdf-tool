@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop PDF | FixMyPDF</title>
+    <meta name="description" content="Crop PDF pages visually. Remove unwanted margins from your PDF documents page by page.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="pdf-state.js"></script>
+    <script src="auto-loader.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .crop-options-container {
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            margin-top: 24px;
+        }
+
+        .crop-two-column {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .preview-column {
+            flex: 1.5;
+            min-width: 400px;
+            position: sticky;
+            top: 100px;
+            align-self: flex-start;
+        }
+
+        .settings-column {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        @media (max-width: 900px) {
+            .crop-two-column {
+                flex-direction: column;
+            }
+            .preview-column {
+                position: static;
+            }
+        }
+
+        .preview-box {
+            background: #F8FAFC;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .preview-header h4 {
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+        }
+
+        .page-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .page-nav-btn {
+            background: #F1F5F9;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .page-nav-btn:hover {
+            background: var(--brand-color);
+            color: white;
+        }
+
+        .page-indicator {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .crop-canvas-container {
+            background: #E2E8F0;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: auto;
+            cursor: crosshair;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #crop-canvas {
+            display: block;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background: white;
+            cursor: crosshair;
+        }
+
+        /* 8-point resize handles */
+        .crop-overlay {
+            position: absolute;
+            border: 2px solid var(--brand-color);
+            background: rgba(229, 50, 45, 0.15);
+            cursor: move;
+            display: none;
+            box-sizing: border-box;
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--brand-color);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .resize-handle:hover {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        .action-buttons-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .preview-full-btn {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .preview-full-btn:hover {
+            background: #2563EB;
+        }
+
+        .apply-crop-btn {
+            background: #10B981;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .apply-crop-btn:hover {
+            background: #059669;
+        }
+
+        .reset-crop-btn {
+            background: #64748B;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .reset-crop-btn:hover {
+            background: #475569;
+        }
+
+        .hidden-panel {
+            display: none !important;
+        }
+
+        .crop-info {
+            background: #EFF6FF;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-top: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <i class="ph-fill ph-wrench"></i>
+            FixMy<span>PDF</span>
+        </a>
+    </nav>
+
+    <main class="container" style="max-width: 1300px; padding-top: 2rem;">
+
+        <div class="tool-header">
+            <h1>Crop PDF</h1>
+            <p>Visually crop each page by dragging the crop box handles. Navigate between pages and crop independently.</p>
+        </div>
+
+        <div id="drop-zone" class="drop-zone">
+            <i class="ph-duotone ph-crop" style="color: var(--brand-color);"></i>
+            <h3>Choose a PDF document</h3>
+            <p>or drag and drop your .pdf here</p>
+            <input type="file" id="file-input" accept="application/pdf" hidden>
+        </div>
+
+        <div id="options-panel" class="crop-options-container hidden-panel">
+            
+            <div class="file-info-row" style="margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div class="file-details">
+                    <h3 id="file-name-display" style="margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-fill ph-file-pdf" style="color: var(--brand-color);"></i> 
+                        <span>document.pdf</span>
+                    </h3>
+                    <p id="page-count-display" class="file-meta" style="font-size: 0.85rem; color: var(--text-muted);">Detected pages</p>
+                </div>
+                <div class="file-actions-group" style="display: flex; gap: 10px;">
+                    <button id="remove-file-btn" class="icon-btn danger">
+                        <i class="ph-bold ph-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="crop-two-column">
+                
+                <!-- LEFT COLUMN - Visual Crop Preview -->
+                <div class="preview-column">
+                    <div class="preview-box">
+                        <div class="preview-header">
+                            <h4><i class="ph-bold ph-crop"></i> Drag handles to crop</h4>
+                            <div class="page-controls">
+                                <button id="prev-page-btn" class="page-nav-btn">
+                                    <i class="ph-bold ph-caret-left"></i> Prev
+                                </button>
+                                <span id="page-indicator" class="page-indicator">Page 1 / 1</span>
+                                <button id="next-page-btn" class="page-nav-btn">
+                                    Next <i class="ph-bold ph-caret-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="crop-canvas-container" id="crop-container">
+                            <div class="canvas-wrapper" id="canvas-wrapper">
+                                <canvas id="crop-canvas"></canvas>
+                                <div id="crop-overlay" class="crop-overlay"></div>
+                                <!-- 8 resize handles -->
+                                <div id="handle-nw" class="resize-handle"></div>
+                                <div id="handle-n" class="resize-handle"></div>
+                                <div id="handle-ne" class="resize-handle"></div>
+                                <div id="handle-w" class="resize-handle"></div>
+                                <div id="handle-e" class="resize-handle"></div>
+                                <div id="handle-sw" class="resize-handle"></div>
+                                <div id="handle-s" class="resize-handle"></div>
+                                <div id="handle-se" class="resize-handle"></div>
+                            </div>
+                        </div>
+                        <div class="crop-info">
+                            <i class="ph-bold ph-info"></i> 
+                            <strong>How to use:</strong> Drag the corner or edge handles to resize the crop box. 
+                            Click inside the box to move it. Each page saves its own crop settings.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN - Actions -->
+                <div class="settings-column">
+                    
+                    <div class="action-buttons-group">
+                        <button id="reset-crop-btn" class="reset-crop-btn">
+                            <i class="ph-bold ph-arrows-clockwise"></i> Reset Current Page
+                        </button>
+                        <button id="preview-full-btn" class="preview-full-btn">
+                            <i class="ph-bold ph-eye"></i> Preview Full PDF
+                        </button>
+                        <button id="apply-crop-btn" class="apply-crop-btn">
+                            <i class="ph-bold ph-check"></i> Export Cropped PDF
+                        </button>
+                    </div>
+
+                    <p id="status-message" style="text-align: center; font-weight: 600; margin-top: 16px; min-height: 24px;"></p>
+
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Full PDF Preview Modal -->
+    <div id="pdf-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>
+                    <i class="ph-fill ph-file-pdf" style="color: var(--brand-color);"></i>
+                    Cropped Document Preview
+                </h3>
+                <button id="close-modal-btn" class="close-modal-btn">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+            <iframe id="pdf-preview-frame" class="pdf-frame" src=""></iframe>
+        </div>
+    </div>
+
+     <!-- Apply Changes & Continue Editing Button -->
+<div style="display: flex; gap: 12px; margin-top: 16px;">
+    <button id="apply-and-continue-btn" class="action-btn" style="background: #3B82F6; width: 100%;">
+        <i class="ph-bold ph-share-network"></i> Apply Changes & Continue Editing
+    </button>
+</div>
+
+    <script src="crop-pdf.js"></script>
+</body>
+</html>

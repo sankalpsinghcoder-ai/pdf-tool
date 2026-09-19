@@ -1,0 +1,562 @@
+/* --- CSS VARIABLES (Design System) --- */
+:root {
+    --brand-color: #E5322D; /* FixMyPDF Red */
+    --brand-hover: #CC2C28;
+    --bg-color: #F8FAFC;
+    --card-bg: #FFFFFF;
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+    --border-color: #E2E8F0;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* --- BASE STYLES --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    line-height: 1.5;
+}
+
+/* --- NAVIGATION --- */
+.navbar {
+    background-color: var(--card-bg);
+    padding: 1rem 5%;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.5px;
+}
+
+.logo span {
+    color: var(--brand-color);
+}
+
+.logo i {
+    color: var(--brand-color);
+    font-size: 1.8rem;
+}
+
+/* --- HERO SECTION --- */
+.hero {
+    text-align: center;
+    padding: 4rem 1rem 3rem;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 1rem;
+    color: var(--text-main);
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto 2.5rem auto;
+}
+
+/* --- SEARCH BAR --- */
+.search-container {
+    max-width: 500px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-icon {
+    position: absolute;
+    left: 16px;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
+#search-input {
+    width: 100%;
+    padding: 16px 16px 16px 48px;
+    font-size: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 99px;
+    outline: none;
+    transition: all 0.2s ease;
+    background-color: var(--card-bg);
+    box-shadow: var(--shadow-sm);
+}
+
+#search-input:focus {
+    border-color: var(--brand-color);
+    box-shadow: 0 0 0 4px rgba(229, 50, 45, 0.1);
+}
+
+/* --- TOOLS GRID --- */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+}
+
+.tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.tool-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.tool-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--brand-color);
+}
+
+.tool-icon {
+    font-size: 2.5rem;
+    color: var(--brand-color);
+    background: #FEF2F2;
+    padding: 12px;
+    border-radius: 12px;
+    transition: transform 0.3s ease;
+}
+
+.tool-card:hover .tool-icon {
+    transform: scale(1.05) rotate(-5deg);
+}
+
+.tool-text h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.tool-text p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Disabled/Coming Soon State */
+.tool-card.coming-soon {
+    opacity: 0.6;
+    pointer-events: none; /* Prevents clicking */
+}
+
+.tool-card.coming-soon .tool-icon {
+    color: #94A3B8;
+    background: #F1F5F9;
+}
+
+.badge {
+    background: #E2E8F0;
+    color: #475569;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+#no-results {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+/* =========================================
+   TOOL PAGES UI (Merge, Split, etc.)
+   ========================================= */
+   
+.tool-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.tool-header h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -1px;
+    margin-bottom: 0.5rem;
+}
+
+.tool-header p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+/* Premium Drag & Drop Zone */
+.drop-zone {
+    border: 2px dashed #CBD5E1;
+    border-radius: 20px;
+    padding: 4rem 2rem;
+    background-color: var(--card-bg);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.5rem;
+}
+
+.drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--brand-color);
+    background-color: #FEF2F2;
+}
+
+.drop-zone i {
+    font-size: 3.5rem;
+    color: var(--brand-color);
+    margin-bottom: 1rem;
+}
+
+.drop-zone h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.drop-zone p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* File List UI */
+.file-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 2rem;
+}
+
+.file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--card-bg);
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s;
+}
+
+.file-item:hover {
+    transform: translateX(4px);
+    border-color: #CBD5E1;
+}
+
+.file-name {
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.file-name i {
+    color: var(--brand-color);
+    font-size: 1.5rem;
+}
+
+/* Buttons */
+.remove-btn {
+    background: #FEE2E2;
+    color: var(--brand-color);
+    border: none;
+    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1.2rem;
+}
+
+.remove-btn:hover {
+    background: var(--brand-color);
+    color: white;
+}
+
+.action-btn {
+    background: var(--text-main);
+    color: white;
+    border: none;
+    padding: 16px 32px;
+    border-radius: 99px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+    max-width: 350px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 auto;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: var(--brand-color);
+}
+
+.action-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#status-message {
+    text-align: center;
+    margin-top: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* =========================================
+   TOOL OPTIONS PANEL (For Split, Extract, etc.)
+   ========================================= */
+.options-panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-sm);
+    text-align: left;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.options-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.options-header h4 {
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.options-header h4 i {
+    color: var(--brand-color);
+    font-size: 1.4rem;
+}
+
+.page-count-badge {
+    background: #EFF6FF;
+    color: #2563EB;
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.input-group label {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.input-group input {
+    padding: 12px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.input-group input:focus {
+    border-color: var(--brand-color);
+}
+
+.helper-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* =========================================
+   UTILITY BUTTONS & MODAL (View / Remove)
+   ========================================= */
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.icon-btn {
+    background: #F1F5F9;
+    color: var(--text-muted);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: #E2E8F0;
+    color: var(--text-main);
+}
+
+.icon-btn.danger {
+    background: #FEE2E2;
+    color: var(--brand-color);
+}
+
+.icon-btn.danger:hover {
+    background: var(--brand-color);
+    color: white;
+}
+
+/* PDF Preview Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.modal.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    width: 90%;
+    max-width: 1000px;
+    height: 85vh;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-hover);
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal.active .modal-content {
+    transform: scale(1);
+}
+
+.modal-header {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    background: #F8FAFC;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-modal-btn:hover {
+    color: var(--brand-color);
+}
+
+.pdf-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #E2E8F0;
+}

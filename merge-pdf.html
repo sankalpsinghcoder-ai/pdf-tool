@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge PDF | FixMyPDF</title>
+    <meta name="description" content="Merge multiple PDF files into one instantly. 100% secure, offline processing.">
+    
+    <!-- Premium Fonts and Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="pdf-state.js"></script>
+    <script src="auto-loader.js"></script>
+    
+    <!-- PDF Engine -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <i class="ph-fill ph-wrench"></i>
+            FixMy<span>PDF</span>
+        </a>
+    </nav>
+
+    <!-- Main Tool Workspace -->
+    <main class="container" style="max-width: 800px; padding-top: 3rem;">
+        
+        <div class="tool-header">
+            <h1>Merge PDF</h1>
+            <p>Combine multiple PDFs into one unified document securely.</p>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div id="drop-zone" class="drop-zone">
+            <i class="ph-duotone ph-upload-simple"></i>
+            <h3>Choose PDF files</h3>
+            <p>or drop PDFs here</p>
+            <input type="file" id="file-input" multiple accept="application/pdf" hidden>
+        </div>
+
+        <!-- Selected Files List -->
+        <ul id="file-list" class="file-list"></ul>
+
+        <!-- Action Button -->
+<button id="merge-btn" class="action-btn hidden">
+    Merge PDFs <i class="ph-bold ph-arrow-right"></i>
+</button>
+
+<!-- Add this button -->
+<div style="display: flex; gap: 12px; margin-top: 16px;">
+    <button id="apply-and-continue-btn" class="action-btn" style="background: #3B82F6; width: 100%;">
+        <i class="ph-bold ph-share-network"></i> Apply Changes & Continue Editing
+    </button>
+</div>
+
+<p id="status-message"></p>
+
+    </main>
+
+    <!-- NEW: The PDF Preview Modal Popup (Hidden by default) -->
+    <div id="pdf-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="ph-fill ph-file-pdf" style="color: var(--brand-color);"></i> Document Preview</h3>
+                <button id="close-modal-btn" class="close-modal-btn" title="Close Preview"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <!-- The iframe securely displays the PDF using the browser's native viewer -->
+            <iframe id="pdf-preview-frame" class="pdf-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <!-- Notice we are linking to merge.js now, NOT app.js -->
+    <script src="merge.js"></script>
+</body>
+</html>

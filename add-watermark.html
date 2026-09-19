@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Watermark | FixMyPDF</title>
+    <meta name="description" content="Add text or image watermarks to your PDF documents. Customize opacity, position, rotation, and page range.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="pdf-state.js"></script>
+    <script src="auto-loader.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        .watermark-options-container {
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            margin-top: 24px;
+        }
+
+        /* TWO COLUMN LAYOUT - Preview on Left, Settings on Right */
+        .watermark-two-column {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .preview-column {
+            flex: 1.2;
+            min-width: 280px;
+            position: sticky;
+            top: 100px;
+            align-self: flex-start;
+        }
+
+        .settings-column {
+            flex: 2;
+            min-width: 300px;
+        }
+
+        @media (max-width: 900px) {
+            .watermark-two-column {
+                flex-direction: column;
+            }
+            .preview-column {
+                position: static;
+                top: 0;
+            }
+        }
+
+        .preview-box {
+            background: #F8FAFC;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 0;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .preview-header h4 {
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+        }
+
+        .refresh-preview-btn {
+            background: var(--brand-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .refresh-preview-btn:hover {
+            background: var(--brand-hover);
+        }
+
+        .preview-page-container {
+            background: #E2E8F0;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        .preview-canvas {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 100%;
+            height: auto;
+            background: white;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .preview-loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .watermark-type-toggle {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            background: #F1F5F9;
+            padding: 6px;
+            border-radius: 12px;
+        }
+
+        .type-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .type-btn.active-watermark-type {
+            background: var(--brand-color);
+            color: white;
+        }
+
+        .settings-two-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .settings-two-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .opacity-slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .position-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .pos-btn {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .pos-btn:hover {
+            border-color: var(--brand-color);
+        }
+
+        .pos-btn.active-position {
+            background: var(--brand-color);
+            color: white;
+            border-color: var(--brand-color);
+        }
+
+        .image-preview-area {
+            margin-top: 12px;
+            padding: 12px;
+            background: #F8FAFC;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .uploaded-image-preview {
+            max-width: 100%;
+            max-height: 100px;
+            margin-top: 8px;
+            border-radius: 4px;
+        }
+
+        .range-badge {
+            background: #EFF6FF;
+            color: #2563EB;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-top: 12px;
+        }
+
+        .action-buttons-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .preview-full-btn {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .preview-full-btn:hover {
+            background: #2563EB;
+        }
+
+        .hidden-panel {
+            display: none !important;
+        }
+
+        .file-info-row {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <i class="ph-fill ph-wrench"></i>
+            FixMy<span>PDF</span>
+        </a>
+    </nav>
+
+    <main class="container" style="max-width: 1300px; padding-top: 2rem;">
+
+        <div class="tool-header">
+            <h1>Add Watermark</h1>
+            <p>Protect your documents by adding text or image watermarks. Customize position, opacity, rotation, and more.</p>
+        </div>
+
+        <div id="drop-zone" class="drop-zone">
+            <i class="ph-duotone ph-stamp" style="color: var(--brand-color);"></i>
+            <h3>Choose a PDF document</h3>
+            <p>or drag and drop your .pdf here</p>
+            <input type="file" id="file-input" accept="application/pdf" hidden>
+        </div>
+
+        <div id="options-panel" class="watermark-options-container hidden-panel">
+            
+            <div class="file-info-row">
+                <div class="file-details">
+                    <h3 id="file-name-display" style="margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                        <i class="ph-fill ph-file-pdf" style="color: var(--brand-color);"></i> 
+                        <span>document.pdf</span>
+                    </h3>
+                    <p id="page-count-display" class="file-meta" style="font-size: 0.85rem; color: var(--text-muted);">Detected pages</p>
+                </div>
+                <div class="file-actions-group" style="display: flex; gap: 10px;">
+                    <button id="view-original-btn" class="icon-btn">
+                        <i class="ph-bold ph-eye"></i> View Original
+                    </button>
+                    <button id="remove-file-btn" class="icon-btn danger">
+                        <i class="ph-bold ph-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+
+            <!-- TWO COLUMN LAYOUT -->
+            <div class="watermark-two-column">
+                
+                <!-- LEFT COLUMN - Preview -->
+                <div class="preview-column">
+                    <div class="preview-box">
+                        <div class="preview-header">
+                            <h4><i class="ph-bold ph-image"></i> Live Preview (First Page)</h4>
+                            <button id="refresh-preview-btn" class="refresh-preview-btn">
+                                <i class="ph-bold ph-arrows-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="preview-page-container" id="preview-container">
+                            <div id="preview-loading" class="preview-loading">
+                                <i class="ph-bold ph-spinner ph-spin"></i> Loading preview...
+                            </div>
+                            <canvas id="preview-canvas" class="preview-canvas" style="display: none;"></canvas>
+                        </div>
+                        <p class="helper-text" style="margin-top: 12px; text-align: center;">⬆️ Watermark preview updates automatically</p>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN - Settings -->
+                <div class="settings-column">
+                    
+                    <!-- Watermark Type Toggle -->
+                    <div class="watermark-type-toggle">
+                        <button id="text-watermark-btn" class="type-btn active-watermark-type">
+                            <i class="ph-bold ph-text-aa"></i> Text Watermark
+                        </button>
+                        <button id="image-watermark-btn" class="type-btn">
+                            <i class="ph-bold ph-image"></i> Image Watermark
+                        </button>
+                    </div>
+
+                    <!-- Text Watermark Settings -->
+                    <div id="text-settings">
+                        <div class="settings-two-grid">
+                            <div class="input-group">
+                                <label style="font-weight: 600;">Watermark Text</label>
+                                <input type="text" id="watermark-text" value="CONFIDENTIAL" placeholder="Enter watermark text" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            </div>
+
+                            <div class="input-group">
+                                <label style="font-weight: 600;">Font Size (px)</label>
+                                <input type="number" id="watermark-font-size" value="40" min="10" max="150" step="5" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            </div>
+                        </div>
+
+                        <div class="settings-two-grid">
+                            <div class="input-group">
+                                <label style="font-weight: 600;">Text Color</label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="color" id="watermark-color" value="#E5322D" style="width: 50px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px;">
+                                    <span id="color-value" style="font-family: monospace;">#E5322D</span>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <label style="font-weight: 600;">Font Weight</label>
+                                <select id="watermark-weight" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    <option value="normal">Normal</option>
+                                    <option value="bold" selected>Bold</option>
+                                    <option value="900">Extra Bold</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Watermark Settings (Hidden by default) -->
+                    <div id="image-settings" class="hidden-panel">
+                        <div class="input-group">
+                            <label style="font-weight: 600;">Upload Watermark Image</label>
+                            <input type="file" id="watermark-image-input" accept="image/png, image/jpeg, image/jpg, image/webp" style="padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%;">
+                            <div id="image-preview-area" class="image-preview-area hidden-panel">
+                                <p style="font-size: 0.85rem; color: var(--text-muted);">Preview:</p>
+                                <img id="watermark-image-preview" class="uploaded-image-preview" alt="Watermark preview">
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label style="font-weight: 600;">Image Width (px)</label>
+                            <input type="number" id="image-width" value="150" min="30" max="500" step="10" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        </div>
+                    </div>
+
+                    <!-- Common Settings -->
+                    <div class="settings-two-grid">
+                        <div class="input-group">
+                            <label style="font-weight: 600;">Opacity</label>
+                            <input type="range" id="watermark-opacity" min="0" max="100" value="30" class="opacity-slider">
+                            <span id="opacity-value" style="font-size: 0.85rem;">30%</span>
+                        </div>
+
+                        <div class="input-group">
+                            <label style="font-weight: 600;">Rotation (degrees)</label>
+                            <input type="range" id="watermark-rotation" min="-45" max="45" value="-25" step="5" class="opacity-slider">
+                            <span id="rotation-value" style="font-size: 0.85rem;">-25°</span>
+                        </div>
+                    </div>
+
+                    <!-- Position Selection -->
+                    <div class="input-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600;">Watermark Position</label>
+                        <div class="position-grid">
+                            <button class="pos-btn" data-pos="top-left">↖ Top Left</button>
+                            <button class="pos-btn" data-pos="top-center">↑ Top Center</button>
+                            <button class="pos-btn" data-pos="top-right">↗ Top Right</button>
+                            <button class="pos-btn" data-pos="center-left">← Center Left</button>
+                            <button class="pos-btn active-position" data-pos="center">● Center</button>
+                            <button class="pos-btn" data-pos="center-right">→ Center Right</button>
+                            <button class="pos-btn" data-pos="bottom-left">↙ Bottom Left</button>
+                            <button class="pos-btn" data-pos="bottom-center">↓ Bottom Center</button>
+                            <button class="pos-btn" data-pos="bottom-right">↘ Bottom Right</button>
+                        </div>
+                    </div>
+
+                    <!-- Page Range -->
+                    <div class="settings-two-grid">
+                        <div class="input-group">
+                            <label style="font-weight: 600;">Apply to Pages</label>
+                            <select id="page-scope" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <option value="all" selected>All Pages</option>
+                                <option value="first">First Page Only</option>
+                                <option value="last">Last Page Only</option>
+                                <option value="range">Custom Range</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label style="font-weight: 600;">Tile Watermark</label>
+                            <select id="tile-mode" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <option value="single" selected>Single Watermark</option>
+                                <option value="tile">Tile / Repeat (background)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Custom Range Input -->
+                    <div id="range-input-wrapper" class="input-group hidden-panel" style="margin-bottom: 20px;">
+                        <label for="page-range-input">Page Range (e.g., 1, 3, 5-10)</label>
+                        <input type="text" id="page-range-input" placeholder="1, 3, 5-10" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <div id="range-badge" class="range-badge"></div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons-group">
+                        <button id="preview-full-btn" class="preview-full-btn">
+                            <i class="ph-bold ph-eye"></i> Preview Full PDF
+                        </button>
+                        <button id="convert-btn" class="action-btn" style="margin: 0; flex: 1;">
+                            Download Watermarked PDF
+                            <i class="ph-bold ph-download-simple"></i>
+                        </button>
+                    </div>
+
+                     <!-- Apply Changes & Continue Editing Button -->
+<div style="display: flex; gap: 12px; margin-top: 16px;">
+    <button id="apply-and-continue-btn" class="action-btn" style="background: #3B82F6; width: 100%;">
+        <i class="ph-bold ph-share-network"></i> Apply Changes & Continue Editing
+    </button>
+</div>
+
+                </div>
+            </div>
+
+            <p id="status-message" style="text-align: center; font-weight: 600; margin-top: 16px; min-height: 24px;"></p>
+
+        </div>
+
+    </main>
+
+    <!-- Full PDF Preview Modal -->
+    <div id="pdf-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>
+                    <i class="ph-fill ph-file-pdf" style="color: var(--brand-color);"></i>
+                    Full Document Preview (With Watermark)
+                </h3>
+                <button id="close-modal-btn" class="close-modal-btn">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+            <iframe id="pdf-preview-frame" class="pdf-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <script src="add-watermark.js"></script>
+</body>
+</html>
