@@ -44,10 +44,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================================
 
     async function parseSpreadsheetFile(file) {
-        const fileExtension = file.name.split('.').pop().toLowerCase();
-        if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
-            logStatus('Please provide an authentic XLSX or XLS sheet document.', 'var(--brand-color)');
-            return;
+        if (typeof Security !== 'undefined') {
+            if (!Security.enforceSafeSize(file)) {
+                logStatus('File exceeds the 100MB limit or is empty.', 'var(--brand-color)');
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'excel');
+            if (!isValid) {
+                logStatus('Please provide an authentic XLSX or XLS sheet document.', 'var(--brand-color)');
+                return;
+            }
+        } else {
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
+                logStatus('Please provide an authentic XLSX or XLS sheet document.', 'var(--brand-color)');
+                return;
+            }
         }
 
         currentFile = file;
@@ -285,14 +297,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const compiledBinaryBlob = new Blob([integratedPdfBytes], { type: 'application/pdf' });
             
-            if (generatedPdfBlobUrl) URL.revokeObjectURL(generatedPdfBlobUrl);
-            generatedPdfBlobUrl = URL.createObjectURL(compiledBinaryBlob);
+            if (generatedPdfBlobUrl) {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(generatedPdfBlobUrl);
+                else URL.revokeObjectURL(generatedPdfBlobUrl);
+            }
+            generatedPdfBlobUrl = typeof Security !== 'undefined'
+                ? Security.createObjectURL(compiledBinaryBlob)
+                : URL.createObjectURL(compiledBinaryBlob);
 
             viewPdfBtn.classList.remove('hidden-panel');
 
             const autoExecutionAnchor = document.createElement('a');
             autoExecutionAnchor.href = generatedPdfBlobUrl;
-            autoExecutionAnchor.download = currentFile.name.replace(/\.[^/.]+$/, "") + ".pdf";
+            autoExecutionAnchor.download = typeof Security !== 'undefined'
+                ? Security.sanitizeFileName(currentFile.name.replace(/\.[^/.]+$/, "") + ".pdf")
+                : currentFile.name.replace(/\.[^/.]+$/, "") + ".pdf";
             document.body.appendChild(autoExecutionAnchor);
             autoExecutionAnchor.click();
             document.body.removeChild(autoExecutionAnchor);
@@ -491,7 +510,10 @@ document.addEventListener('DOMContentLoaded', () => {
         excelPreviewTable.innerHTML = '';
         sheetTabsRow.innerHTML = '';
 
-        if (generatedPdfBlobUrl) URL.revokeObjectURL(generatedPdfBlobUrl);
+        if (generatedPdfBlobUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(generatedPdfBlobUrl);
+            else URL.revokeObjectURL(generatedPdfBlobUrl);
+        }
         generatedPdfBlobUrl = null;
 
         viewPdfBtn.classList.add('hidden-panel');

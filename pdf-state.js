@@ -7,12 +7,13 @@ const PDFState = {
     
     savePdf(pdfBytes, fileName, fileSize) {
         try {
+            const safeName = typeof Security !== 'undefined' ? Security.sanitizeFileName(fileName) : fileName;
             const base64 = this.arrayBufferToBase64(pdfBytes);
             sessionStorage.setItem('fixmypdf_current_pdf', base64);
-            sessionStorage.setItem('fixmypdf_current_name', fileName);
+            sessionStorage.setItem('fixmypdf_current_name', safeName);
             sessionStorage.setItem('fixmypdf_current_size', fileSize);
             this.currentPdfData = pdfBytes;
-            this.currentPdfName = fileName;
+            this.currentPdfName = safeName;
             this.currentPdfSize = fileSize;
             return true;
         } catch (error) {
@@ -28,11 +29,12 @@ const PDFState = {
             const size = sessionStorage.getItem('fixmypdf_current_size');
             
             if (base64 && name) {
+                const safeName = typeof Security !== 'undefined' ? Security.sanitizeFileName(name) : name;
                 const pdfBytes = this.base64ToArrayBuffer(base64);
                 this.currentPdfData = pdfBytes;
-                this.currentPdfName = name;
+                this.currentPdfName = safeName;
                 this.currentPdfSize = size;
-                return { pdfBytes, name, size };
+                return { pdfBytes, name: safeName, size };
             }
             return null;
         } catch (error) {

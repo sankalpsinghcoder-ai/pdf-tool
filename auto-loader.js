@@ -21,38 +21,57 @@
             if (stored && !window._pdfAutoLoaded) {
                 window._pdfAutoLoaded = true; // Prevent multiple loads
                 
-                // Show notification
-                showNotification(stored.name);
+                const safeName = typeof Security !== 'undefined' ? Security.sanitizeFileName(stored.name) : stored.name;
+                const file = new File([stored.pdfBytes], safeName, { type: 'application/pdf' });
                 
-                // Create a fake file object
-                const file = new File([stored.pdfBytes], stored.name, { type: 'application/pdf' });
-                
-                // Find and call the appropriate upload function
-                setTimeout(() => {
-                    if (typeof processUploadDocument === 'function') {
-                        processUploadDocument(file);
-                    } else if (typeof processUpload === 'function') {
-                        processUpload(file);
-                    } else if (typeof handleFile === 'function') {
-                        handleFile(file);
-                    } else if (typeof parseSpreadsheetFile === 'function') {
-                        // For Excel to PDF tool
-                        parseSpreadsheetFile(file);
-                    } else {
-                        console.warn('No upload function found for this tool');
-                        // Try to find file input and trigger change event
-                        const fileInput = document.getElementById('file-input');
-                        if (fileInput) {
-                            const dataTransfer = new DataTransfer();
-                            dataTransfer.items.add(file);
-                            fileInput.files = dataTransfer.files;
-                            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
+                const proceed = () => {
+                    showNotification(safeName);
                     
-                    // Clear the stored PDF after loading
-                    PDFState.clearPdf();
-                }, 100);
+                    // Find and call the appropriate upload function
+                    setTimeout(() => {
+                        if (typeof processUploadDocument === 'function') {
+                            processUploadDocument(file);
+                        } else if (typeof processUpload === 'function') {
+                            processUpload(file);
+                        } else if (typeof handleFile === 'function') {
+                            handleFile(file);
+                        } else if (typeof parseSpreadsheetFile === 'function') {
+                            parseSpreadsheetFile(file);
+                        } else {
+                            console.warn('No upload function found for this tool');
+                            const fileInput = document.getElementById('file-input');
+                            if (fileInput) {
+                                const dataTransfer = new DataTransfer();
+                                dataTransfer.items.add(file);
+                                fileInput.files = dataTransfer.files;
+                                fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        }
+                        
+                        // Clear the stored PDF after loading
+                        PDFState.clearPdf();
+                    }, 100);
+                };
+
+                if (typeof Security !== 'undefined') {
+                    if (!Security.enforceSafeSize(file)) {
+                        console.warn('Stored PDF exceeds safe size limit');
+                        PDFState.clearPdf();
+                        return;
+                    }
+                    Security.validateFileMagic(file, 'pdf').then(isValid => {
+                        if (isValid) {
+                            proceed();
+                        } else {
+                            console.warn('Stored PDF failed magic byte validation');
+                            PDFState.clearPdf();
+                        }
+                    }).catch(() => {
+                        PDFState.clearPdf();
+                    });
+                } else {
+                    proceed();
+                }
             }
         }
     }
@@ -82,7 +101,7 @@
         `;
         notification.innerHTML = `
             <i class="ph-bold ph-file-pdf"></i>
-            <span>Loading: ${fileName}</span>
+            <span>Loading: ${typeof Security !== 'undefined' ? Security.escapeHTML(fileName) : fileName}</span>
             <i class="ph-bold ph-spinner ph-spin"></i>
         `;
         document.body.appendChild(notification);

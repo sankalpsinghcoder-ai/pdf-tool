@@ -102,7 +102,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================================================
 
     async function processUploadDocument(file) {
-        if (file.type !== 'application/pdf') {
+        if (typeof Security !== 'undefined') {
+            if (!Security.enforceSafeSize(file)) {
+                alert('File exceeds the 100MB limit or is empty.');
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Please select a valid PDF file.');
+                return;
+            }
+        } else if (file.type !== 'application/pdf') {
             alert('Please select a valid PDF file.');
             return;
         }
@@ -124,8 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Build original source URL for live view tracking safely
             const originalBlobSource = new Blob([fileBinaryBytes], { type: 'application/pdf' });
-            if (sourceUploadedBlobUrl) URL.revokeObjectURL(sourceUploadedBlobUrl);
-            sourceUploadedBlobUrl = URL.createObjectURL(originalBlobSource);
+            if (sourceUploadedBlobUrl) {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(sourceUploadedBlobUrl);
+                else URL.revokeObjectURL(sourceUploadedBlobUrl);
+            }
+            sourceUploadedBlobUrl = typeof Security !== 'undefined' 
+                ? Security.createObjectURL(originalBlobSource) 
+                : URL.createObjectURL(originalBlobSource);
 
             const loadedPdfInstance = await pdfEngine.getDocument({ 
                 data: fileBinaryBytes.slice(0) 
@@ -331,16 +346,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const transformedBytes = await operatingPdfDoc.save({ useObjectStreams: false });
                 const outputBinaryBlob = new Blob([transformedBytes], { type: 'application/pdf' });
-                const downloadUrl = URL.createObjectURL(outputBinaryBlob);
+                const downloadUrl = typeof Security !== 'undefined' ? Security.createObjectURL(outputBinaryBlob) : URL.createObjectURL(outputBinaryBlob);
 
                 const automatedTriggerAnchor = document.createElement('a');
                 automatedTriggerAnchor.href = downloadUrl;
-                automatedTriggerAnchor.download = currentFile.name.replace(/\.[^/.]+$/, "") + "_edited.pdf";
+                automatedTriggerAnchor.download = typeof Security !== 'undefined'
+                    ? Security.sanitizeFileName(currentFile.name.replace(/\.[^/.]+$/, "") + "_edited.pdf")
+                    : currentFile.name.replace(/\.[^/.]+$/, "") + "_edited.pdf";
                 document.body.appendChild(automatedTriggerAnchor);
                 automatedTriggerAnchor.click();
                 
                 document.body.removeChild(automatedTriggerAnchor);
-                setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+                setTimeout(() => {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(downloadUrl);
+                    else URL.revokeObjectURL(downloadUrl);
+                }, 60000);
 
                 logStatus('<i class="ph-fill ph-check-circle" style="color:#10B981;"></i> Success! High-quality file downloaded.', '#10B981');
 
@@ -542,7 +562,10 @@ document.addEventListener('DOMContentLoaded', () => {
         thumbnailsGrid.innerHTML = '';
         deletePagesSet.clear();
 
-        if (sourceUploadedBlobUrl) URL.revokeObjectURL(sourceUploadedBlobUrl);
+        if (sourceUploadedBlobUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(sourceUploadedBlobUrl);
+            else URL.revokeObjectURL(sourceUploadedBlobUrl);
+        }
         sourceUploadedBlobUrl = null;
 
         optionsPanel.classList.add('hidden-panel');

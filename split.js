@@ -48,7 +48,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Read the PDF to get page count & set up preview
     async function handleFile(file) {
-        if (file.type !== 'application/pdf') {
+        if (typeof Security !== 'undefined') {
+            if (!Security.enforceSafeSize(file)) {
+                alert('File exceeds the 100MB limit or is empty.');
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Please select a valid PDF file.');
+                return;
+            }
+        } else if (file.type !== 'application/pdf') {
             alert('Please select a valid PDF file.');
             return;
         }
@@ -67,7 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Generate a secure local URL for the preview modal
             const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-            pdfPreviewUrl = URL.createObjectURL(blob);
+            if (pdfPreviewUrl) {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(pdfPreviewUrl);
+                else URL.revokeObjectURL(pdfPreviewUrl);
+            }
+            pdfPreviewUrl = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
             
             // Read PDF metadata
             const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
@@ -94,7 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
         pageRangeInput.value = ''; // Clear text box
         
         // Revoke the preview URL from memory to prevent memory leaks
-        if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+        if (pdfPreviewUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(pdfPreviewUrl);
+            else URL.revokeObjectURL(pdfPreviewUrl);
+        }
         pdfPreviewUrl = null;
 
         optionsPanel.classList.add('hidden');
@@ -173,14 +190,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const splitPdfBytes = await newPdf.save();
             const blob = new Blob([splitPdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
+            const url = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = `FixMyPDF_Split_${currentFile.name}`;
+            a.download = typeof Security !== 'undefined' ? Security.sanitizeFileName(`FixMyPDF_Split_${currentFile.name}`) : `FixMyPDF_Split_${currentFile.name}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            setTimeout(() => {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(url);
+                else URL.revokeObjectURL(url);
+            }, 60000);
 
             statusMessage.innerHTML = `<i class="ph-fill ph-check-circle"></i> Success! Extracted ${pagesToExtract.length} pages.`;
             statusMessage.style.color = "#10B981";

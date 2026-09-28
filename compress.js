@@ -56,7 +56,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function handleFile(file) {
-        if (file.type !== 'application/pdf') {
+        if (typeof Security !== 'undefined') {
+            if (!Security.enforceSafeSize(file)) {
+                alert('File exceeds the 100MB limit or is empty.');
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Please drop or select an authentic PDF layout.');
+                return;
+            }
+        } else if (file.type !== 'application/pdf') {
             alert('Please drop or select an authentic PDF layout.');
             return;
         }
@@ -75,7 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
             originalPdfBytes = arrayBuffer;
 
             const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-            pdfPreviewUrl = URL.createObjectURL(blob);
+            if (pdfPreviewUrl) {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(pdfPreviewUrl);
+                else URL.revokeObjectURL(pdfPreviewUrl);
+            }
+            pdfPreviewUrl = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
 
             const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
             totalPages = pdfDoc.getPageCount();
@@ -101,7 +115,10 @@ document.addEventListener('DOMContentLoaded', () => {
         totalPages = 0;
         fileInput.value = '';
 
-        if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
+        if (pdfPreviewUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(pdfPreviewUrl);
+            else URL.revokeObjectURL(pdfPreviewUrl);
+        }
         pdfPreviewUrl = null;
 
         optionsPanel.classList.add('hidden');
@@ -214,14 +231,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const originalSize = currentFile.size;
             const finalSize = compressedBlob.size;
 
-            const downloadUrl = URL.createObjectURL(compressedBlob);
+            const downloadUrl = typeof Security !== 'undefined' ? Security.createObjectURL(compressedBlob) : URL.createObjectURL(compressedBlob);
             const anchor = document.createElement('a');
             anchor.href = downloadUrl;
-            anchor.download = `FixMyPDF_Compressed_${currentFile.name}`;
+            anchor.download = typeof Security !== 'undefined' ? Security.sanitizeFileName(`FixMyPDF_Compressed_${currentFile.name}`) : `FixMyPDF_Compressed_${currentFile.name}`;
             document.body.appendChild(anchor);
             anchor.click();
             document.body.removeChild(anchor);
-            URL.revokeObjectURL(downloadUrl);
+            setTimeout(() => {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(downloadUrl);
+                else URL.revokeObjectURL(downloadUrl);
+            }, 60000);
 
             if (finalSize >= originalSize) {
                 statusMessage.innerHTML = `

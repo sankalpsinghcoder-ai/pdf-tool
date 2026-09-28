@@ -40,10 +40,23 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFiles(e.dataTransfer.files);
     });
 
+    let currentPreviewUrl = null;
+
     // 3. Process Selected Files
-    function handleFiles(files) {
+    async function handleFiles(files) {
         for (let file of files) {
-            if (file.type === 'application/pdf') {
+            if (typeof Security !== 'undefined') {
+                if (!Security.enforceSafeSize(file)) {
+                    alert(`"${Security.escapeHTML(file.name)}" exceeds the 100MB file size limit or is empty.`);
+                    continue;
+                }
+                const isValid = await Security.validateFileMagic(file, 'pdf');
+                if (isValid) {
+                    selectedFiles.push(file);
+                } else {
+                    alert(`"${Security.escapeHTML(file.name)}" is not a valid PDF file.`);
+                }
+            } else if (file.type === 'application/pdf') {
                 selectedFiles.push(file);
             } else {
                 alert(`"${file.name}" is not a PDF. Please select only PDF files.`);
@@ -60,10 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const li = document.createElement('li');
             li.className = 'file-item';
             
+            const safeName = typeof Security !== 'undefined' ? Security.escapeHTML(file.name) : file.name;
             li.innerHTML = `
                 <div class="file-name">
                     <i class="ph-fill ph-file-pdf"></i>
-                    ${index + 1}. ${file.name}
+                    ${index + 1}. ${safeName}
                 </div>
                 <div class="header-actions">
                     <button class="view-btn icon-btn" data-index="${index}" title="View file">
@@ -84,9 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileToView = selectedFiles[index];
                 
                 const blob = new Blob([fileToView], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
+                if (currentPreviewUrl) {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(currentPreviewUrl);
+                    else URL.revokeObjectURL(currentPreviewUrl);
+                }
+                currentPreviewUrl = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
                 
-                pdfPreviewFrame.src = url;
+                pdfPreviewFrame.src = currentPreviewUrl;
                 pdfModal.classList.add('active');
             });
         });
@@ -108,15 +126,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 5. Modal Close Logic
-    closeModalBtn.addEventListener('click', () => {
+    function closeModal() {
         pdfModal.classList.remove('active');
+        if (currentPreviewUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(currentPreviewUrl);
+            else URL.revokeObjectURL(currentPreviewUrl);
+            currentPreviewUrl = null;
+        }
         setTimeout(() => { pdfPreviewFrame.src = ""; }, 300);
-    });
+    }
+
+    closeModalBtn.addEventListener('click', closeModal);
 
     pdfModal.addEventListener('click', (e) => {
         if (e.target === pdfModal) {
-            pdfModal.classList.remove('active');
-            setTimeout(() => { pdfPreviewFrame.src = ""; }, 300);
+            closeModal();
         }
     });
 
@@ -157,14 +181,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!mergedPdfFile) throw new Error('Merge failed');
 
             const blob = new Blob([mergedPdfFile], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
+            const url = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'FixMyPDF_Merged.pdf';
+            a.download = typeof Security !== 'undefined' ? Security.sanitizeFileName('FixMyPDF_Merged.pdf') : 'FixMyPDF_Merged.pdf';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(url);
+                else URL.revokeObjectURL(url);
+            }, 60000);
 
             statusMessage.innerHTML = `<i class="ph-fill ph-check-circle"></i> Success! Your PDF has been merged.`;
             statusMessage.style.color = "#10B981";

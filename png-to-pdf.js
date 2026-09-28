@@ -98,14 +98,18 @@ document.addEventListener('DOMContentLoaded', () => {
             card.setAttribute('data-index', index);
             card.draggable = true;
             
+            const safeName = typeof Security !== 'undefined' ? Security.escapeHTML(img.file.name) : img.file.name;
+            const shortRaw = img.file.name.substring(0, 20) + (img.file.name.length > 20 ? '...' : '');
+            const shortName = typeof Security !== 'undefined' ? Security.escapeHTML(shortRaw) : shortRaw;
+            
             card.innerHTML = `
                 <div class="image-index">${index + 1}</div>
                 <button class="remove-image-btn" data-index="${index}">
                     <i class="ph-bold ph-x"></i>
                 </button>
-                <img src="${img.dataUrl}" alt="${img.file.name}">
+                <img src="${img.dataUrl}" alt="${safeName}">
                 <div class="image-info">
-                    <div>${img.file.name.substring(0, 20)}${img.file.name.length > 20 ? '...' : ''}</div>
+                    <div>${shortName}</div>
                     <div>${img.width} × ${img.height} px</div>
                     <div>${formatFileSize(img.size)}</div>
                 </div>
@@ -200,6 +204,14 @@ document.addEventListener('DOMContentLoaded', () => {
         let loadedCount = 0;
         for (const file of pngFiles) {
             try {
+                if (typeof Security !== 'undefined') {
+                    Security.enforceSafeSize(file);
+                    const isValid = await Security.validateFileMagic(file, 'png');
+                    if (!isValid) {
+                        console.warn('Skipping file due to invalid PNG magic header:', file.name);
+                        continue;
+                    }
+                }
                 const imageData = await loadImage(file);
                 images.push(imageData);
                 loadedCount++;
@@ -338,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const pdfBytes = await pdfDoc.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
+            const url = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
             
             if (!preview) {
                 const a = document.createElement('a');
@@ -347,6 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+                setTimeout(() => {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(url);
+                    else URL.revokeObjectURL(url);
+                }, 1000);
                 showSuccess(`PDF created with ${images.length} page${images.length > 1 ? 's' : ''}!`);
             }
             
@@ -368,7 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
     previewPdfBtn.addEventListener('click', async () => {
         const result = await generatePDF(true);
         if (result && result.url) {
-            if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+            if (previewBlobUrl) {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+                else URL.revokeObjectURL(previewBlobUrl);
+            }
             previewBlobUrl = result.url;
             pdfPreviewFrame.src = previewBlobUrl;
             pdfModal.classList.add('active');
@@ -408,14 +427,28 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', () => {
             pdfModal.classList.remove('active');
-            setTimeout(() => { pdfPreviewFrame.src = ''; }, 300);
+            setTimeout(() => { 
+                pdfPreviewFrame.src = ''; 
+                if (previewBlobUrl) {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+                    else URL.revokeObjectURL(previewBlobUrl);
+                    previewBlobUrl = null;
+                }
+            }, 300);
         });
     }
     
     pdfModal.addEventListener('click', (e) => {
         if (e.target === pdfModal) {
             pdfModal.classList.remove('active');
-            setTimeout(() => { pdfPreviewFrame.src = ''; }, 300);
+            setTimeout(() => { 
+                pdfPreviewFrame.src = ''; 
+                if (previewBlobUrl) {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+                    else URL.revokeObjectURL(previewBlobUrl);
+                    previewBlobUrl = null;
+                }
+            }, 300);
         }
     });
 });

@@ -68,7 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // For plain text files
                     else if (file.name.endsWith('.txt')) {
                         const text = new TextDecoder('utf-8').decode(arrayBuffer);
-                        const html = `<pre style="font-family: monospace; white-space: pre-wrap;">${escapeHtml(text)}</pre>`;
+                        const safeText = typeof Security !== 'undefined' ? Security.escapeHTML(text) : escapeHtml(text);
+                        const html = `<pre style="font-family: monospace; white-space: pre-wrap;">${safeText}</pre>`;
                         resolve(html);
                     }
                     else {
@@ -214,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Convert and download PDF
     async function convertToPdf(download = true) {
         if (!currentHtmlContent) {
-            statusMessage.innerHTML = 'No document loaded.';
+            statusMessage.textContent = 'No document loaded.';
             return null;
         }
         
@@ -226,15 +227,20 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadHtml2Canvas();
             const pdfBytes = await htmlToPdf(currentHtmlContent);
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
+            const url = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
             
             if (download) {
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = currentFile.name.replace(/\.(docx?|txt)$/i, '.pdf');
+                const safeBase = typeof Security !== 'undefined' ? Security.sanitizeFileName(currentFile.name) : currentFile.name;
+                a.download = safeBase.replace(/\.(docx?|txt)$/i, '.pdf');
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+                setTimeout(() => {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(url);
+                    else URL.revokeObjectURL(url);
+                }, 1000);
                 statusMessage.innerHTML = '<i class="ph-fill ph-check-circle" style="color:#10B981;"></i> PDF downloaded successfully!';
                 statusMessage.style.color = '#10B981';
             }
@@ -261,15 +267,18 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const result = await convertToPdf(false);
             if (result && result.url) {
-                if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+                if (previewBlobUrl) {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+                    else URL.revokeObjectURL(previewBlobUrl);
+                }
                 previewBlobUrl = result.url;
                 pdfPreviewFrame.src = previewBlobUrl;
                 pdfModal.classList.add('active');
-                statusMessage.innerHTML = '';
+                statusMessage.textContent = '';
             }
         } catch (error) {
             console.error(error);
-            statusMessage.innerHTML = 'Error generating preview.';
+            statusMessage.textContent = 'Error generating preview.';
         }
     }
 
@@ -283,8 +292,24 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (typeof Security !== 'undefined') {
+            try {
+                Security.enforceSafeSize(file);
+            } catch (err) {
+                alert(err.message);
+                return;
+            }
+            if (ext === '.docx') {
+                const isValid = await Security.validateFileMagic(file, 'word');
+                if (!isValid) {
+                    alert('Invalid file format. The file content does not match DOCX format.');
+                    return;
+                }
+            }
+        }
+
         currentFile = file;
-        fileNameDisplay.textContent = file.name;
+        fileNameDisplay.textContent = typeof Security !== 'undefined' ? Security.sanitizeFileName(file.name) : file.name;
         fileInfo.textContent = `Size: ${formatFileSize(file.size)} | Converting...`;
         dropZone.classList.add('hidden');
         
@@ -295,13 +320,13 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPreview(currentHtmlContent);
             optionsPanel.classList.remove('hidden-panel');
             fileInfo.textContent = `Size: ${formatFileSize(file.size)} | Ready to convert`;
-            statusMessage.innerHTML = '';
+            statusMessage.textContent = '';
         } catch (error) {
             console.error(error);
             alert('Error reading Word document. Please make sure it\'s a valid file.');
             dropZone.classList.remove('hidden');
             optionsPanel.classList.add('hidden-panel');
-            statusMessage.innerHTML = '';
+            statusMessage.textContent = '';
         }
     }
 
@@ -352,8 +377,11 @@ document.addEventListener('DOMContentLoaded', () => {
         htmlPreview.innerHTML = '<p style="color: #94A3B8; text-align: center;">No document loaded</p>';
         optionsPanel.classList.add('hidden-panel');
         dropZone.classList.remove('hidden');
-        statusMessage.innerHTML = '';
-        if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+        statusMessage.textContent = '';
+        if (previewBlobUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+            else URL.revokeObjectURL(previewBlobUrl);
+        }
         previewBlobUrl = null;
     };
 
@@ -362,7 +390,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', () => {
             pdfModal.classList.remove('active');
-            setTimeout(() => { pdfPreviewFrame.src = ''; }, 300);
+            setTimeout(() => { 
+                pdfPreviewFrame.src = '';
+                if (previewBlobUrl) {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+                    else URL.revokeObjectURL(previewBlobUrl);
+                    previewBlobUrl = null;
+                }
+            }, 300);
         });
     }
     

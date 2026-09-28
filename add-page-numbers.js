@@ -198,7 +198,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function processUploadDocument(file) {
-        if (file.type !== 'application/pdf') {
+        if (typeof Security !== 'undefined') {
+            if (!Security.enforceSafeSize(file)) {
+                alert('File exceeds the 100MB limit or is empty.');
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Please select a valid PDF file.');
+                return;
+            }
+        } else if (file.type !== 'application/pdf') {
             alert('Please select a valid PDF file.');
             return;
         }
@@ -211,8 +221,13 @@ document.addEventListener('DOMContentLoaded', () => {
             fileBinaryBytes = await file.arrayBuffer();
             
             const originalBlobSource = new Blob([fileBinaryBytes], { type: 'application/pdf' });
-            if (sourceUploadedBlobUrl) URL.revokeObjectURL(sourceUploadedBlobUrl);
-            sourceUploadedBlobUrl = URL.createObjectURL(originalBlobSource);
+            if (sourceUploadedBlobUrl) {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(sourceUploadedBlobUrl);
+                else URL.revokeObjectURL(sourceUploadedBlobUrl);
+            }
+            sourceUploadedBlobUrl = typeof Security !== 'undefined'
+                ? Security.createObjectURL(originalBlobSource)
+                : URL.createObjectURL(originalBlobSource);
 
             const pdfDoc = await PDFLib.PDFDocument.load(fileBinaryBytes);
             totalDocumentPages = pdfDoc.getPageCount();
@@ -327,16 +342,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!modifiedBytes) throw new Error('Failed to generate PDF');
                 
                 const outputBlob = new Blob([modifiedBytes], { type: 'application/pdf' });
-                const downloadUrl = URL.createObjectURL(outputBlob);
+                const downloadUrl = typeof Security !== 'undefined' ? Security.createObjectURL(outputBlob) : URL.createObjectURL(outputBlob);
 
                 const anchor = document.createElement('a');
                 anchor.href = downloadUrl;
-                anchor.download = currentFile.name.replace(/\.[^/.]+$/, "") + "_numbered.pdf";
+                anchor.download = typeof Security !== 'undefined'
+                    ? Security.sanitizeFileName(currentFile.name.replace(/\.[^/.]+$/, "") + "_numbered.pdf")
+                    : currentFile.name.replace(/\.[^/.]+$/, "") + "_numbered.pdf";
                 document.body.appendChild(anchor);
                 anchor.click();
                 document.body.removeChild(anchor);
                 
-                setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+                setTimeout(() => {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(downloadUrl);
+                    else URL.revokeObjectURL(downloadUrl);
+                }, 60000);
 
                 logStatus(`<i class="ph-fill ph-check-circle" style="color:#10B981;"></i> Success! Added numbers to ${pagesToNumber.length} page(s).`, '#10B981');
 
@@ -537,7 +557,10 @@ document.addEventListener('DOMContentLoaded', () => {
         pageRangeInput.value = '';
         rangeBadge.textContent = '';
 
-        if (sourceUploadedBlobUrl) URL.revokeObjectURL(sourceUploadedBlobUrl);
+        if (sourceUploadedBlobUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(sourceUploadedBlobUrl);
+            else URL.revokeObjectURL(sourceUploadedBlobUrl);
+        }
         sourceUploadedBlobUrl = null;
 
         optionsPanel.classList.add('hidden-panel');

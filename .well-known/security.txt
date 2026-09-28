@@ -1,0 +1,7 @@
+Contact: mailto:security@fixmypdf.com
+Contact: https://github.com/sankalpsinghcoder-ai/pdf-tool/issues
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://sankalpsinghcoder-ai.github.io/pdf-tool/.well-known/security.txt
+Policy: https://github.com/sankalpsinghcoder-ai/pdf-tool/blob/main/README.md
+Acknowledgments: https://github.com/sankalpsinghcoder-ai/pdf-tool

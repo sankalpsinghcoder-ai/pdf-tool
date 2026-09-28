@@ -106,9 +106,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Image upload handling
-    watermarkImageInput.addEventListener('change', (e) => {
+    watermarkImageInput.addEventListener('change', async (e) => {
         if (e.target.files.length > 0) {
             const file = e.target.files[0];
+            if (typeof Security !== 'undefined') {
+                if (!Security.enforceSafeSize(file, 20 * 1024 * 1024)) {
+                    alert('Image exceeds the 20MB limit or is empty.');
+                    watermarkImageInput.value = '';
+                    return;
+                }
+                const isValid = await Security.validateFileMagic(file, 'image');
+                if (!isValid) {
+                    alert('Please select a valid image file (PNG or JPG).');
+                    watermarkImageInput.value = '';
+                    return;
+                }
+            }
             const reader = new FileReader();
             reader.onload = (event) => {
                 uploadedImageData = event.target.result;
@@ -392,7 +405,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function processUploadDocument(file) {
-        if (file.type !== 'application/pdf') {
+        if (typeof Security !== 'undefined') {
+            if (!Security.enforceSafeSize(file)) {
+                alert('File exceeds the 100MB limit or is empty.');
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Please select a valid PDF file.');
+                return;
+            }
+        } else if (file.type !== 'application/pdf') {
             alert('Please select a valid PDF file.');
             return;
         }
@@ -404,8 +427,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             fileBinaryBytes = await file.arrayBuffer();
             const originalBlobSource = new Blob([fileBinaryBytes], { type: 'application/pdf' });
-            if (sourceUploadedBlobUrl) URL.revokeObjectURL(sourceUploadedBlobUrl);
-            sourceUploadedBlobUrl = URL.createObjectURL(originalBlobSource);
+            if (sourceUploadedBlobUrl) {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(sourceUploadedBlobUrl);
+                else URL.revokeObjectURL(sourceUploadedBlobUrl);
+            }
+            sourceUploadedBlobUrl = typeof Security !== 'undefined'
+                ? Security.createObjectURL(originalBlobSource)
+                : URL.createObjectURL(originalBlobSource);
 
             const pdfDoc = await PDFLib.PDFDocument.load(fileBinaryBytes);
             totalDocumentPages = pdfDoc.getPageCount();
@@ -437,8 +465,13 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const modifiedBytes = await generateWatermarkedPdf();
                 const previewBlob = new Blob([modifiedBytes], { type: 'application/pdf' });
-                if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
-                previewBlobUrl = URL.createObjectURL(previewBlob);
+                if (previewBlobUrl) {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+                    else URL.revokeObjectURL(previewBlobUrl);
+                }
+                previewBlobUrl = typeof Security !== 'undefined'
+                    ? Security.createObjectURL(previewBlob)
+                    : URL.createObjectURL(previewBlob);
                 pdfPreviewFrame.src = previewBlobUrl;
                 pdfModal.classList.add('active');
                 logStatus('', '');
@@ -463,16 +496,23 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const modifiedBytes = await generateWatermarkedPdf();
                 const outputBlob = new Blob([modifiedBytes], { type: 'application/pdf' });
-                const downloadUrl = URL.createObjectURL(outputBlob);
+                const downloadUrl = typeof Security !== 'undefined'
+                    ? Security.createObjectURL(outputBlob)
+                    : URL.createObjectURL(outputBlob);
 
                 const anchor = document.createElement('a');
                 anchor.href = downloadUrl;
-                anchor.download = currentFile.name.replace(/\.[^/.]+$/, "") + "_watermarked.pdf";
+                anchor.download = typeof Security !== 'undefined'
+                    ? Security.sanitizeFileName(currentFile.name.replace(/\.[^/.]+$/, "") + "_watermarked.pdf")
+                    : currentFile.name.replace(/\.[^/.]+$/, "") + "_watermarked.pdf";
                 document.body.appendChild(anchor);
                 anchor.click();
                 document.body.removeChild(anchor);
                 
-                setTimeout(() => URL.revokeObjectURL(downloadUrl), 60000);
+                setTimeout(() => {
+                    if (typeof Security !== 'undefined') Security.revokeObjectURL(downloadUrl);
+                    else URL.revokeObjectURL(downloadUrl);
+                }, 60000);
                 logStatus(`<i class="ph-fill ph-check-circle" style="color:#10B981;"></i> Success! Watermark added.`, '#10B981');
 
             } catch (err) {
@@ -684,8 +724,14 @@ document.addEventListener('DOMContentLoaded', () => {
             previewLoading.innerHTML = '<i class="ph-bold ph-upload"></i> Upload a PDF to see preview';
         }
 
-        if (sourceUploadedBlobUrl) URL.revokeObjectURL(sourceUploadedBlobUrl);
-        if (previewBlobUrl) URL.revokeObjectURL(previewBlobUrl);
+        if (sourceUploadedBlobUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(sourceUploadedBlobUrl);
+            else URL.revokeObjectURL(sourceUploadedBlobUrl);
+        }
+        if (previewBlobUrl) {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(previewBlobUrl);
+            else URL.revokeObjectURL(previewBlobUrl);
+        }
         sourceUploadedBlobUrl = null;
         previewBlobUrl = null;
 

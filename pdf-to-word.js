@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
               xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
             <meta charset="UTF-8">
-            <title>${currentFile.name.replace('.pdf', '')}</title>
+            <title>${typeof Security !== 'undefined' ? Security.escapeHTML(currentFile.name.replace('.pdf', '')) : escapeHtml(currentFile.name.replace('.pdf', ''))}</title>
             <style>
                 body {
                     margin: 0;
@@ -297,15 +297,19 @@ document.addEventListener('DOMContentLoaded', () => {
         </html>`;
         
         // Create .docx file (Word can open HTML as .docx)
+        const safeBase = typeof Security !== 'undefined' ? Security.sanitizeFileName(currentFile.name.replace('.pdf', '')) : currentFile.name.replace('.pdf', '');
         const blob = new Blob([documentHtml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-        const url = URL.createObjectURL(blob);
+        const url = typeof Security !== 'undefined' ? Security.createObjectURL(blob) : URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = currentFile.name.replace('.pdf', '_Editable.docx');
+        a.download = `${safeBase}_Editable.docx`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => {
+            if (typeof Security !== 'undefined') Security.revokeObjectURL(url);
+            else URL.revokeObjectURL(url);
+        }, 1000);
         
         return true;
     }
@@ -365,8 +369,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (typeof Security !== 'undefined') {
+            try {
+                Security.enforceSafeSize(file);
+            } catch (err) {
+                alert(err.message);
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Invalid file format. The file content does not match PDF format.');
+                return;
+            }
+        }
+
         currentFile = file;
-        fileNameDisplay.textContent = file.name;
+        fileNameDisplay.textContent = typeof Security !== 'undefined' ? Security.sanitizeFileName(file.name) : file.name;
         dropZone.classList.add('hidden');
 
         try {
@@ -382,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await renderPreview(currentPage);
             updatePageIndicator();
             
-            statusMessage.innerHTML = '';
+            statusMessage.textContent = '';
             
         } catch (error) {
             console.error(error);

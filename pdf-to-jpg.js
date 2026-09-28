@@ -219,7 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await convertPageToJpg(currentPage);
             
             const link = document.createElement('a');
-            link.download = `${currentFile.name.replace('.pdf', '')}_page_${currentPage}.jpg`;
+            const safeBase = typeof Security !== 'undefined' ? Security.sanitizeFileName(currentFile.name.replace('.pdf', '')) : currentFile.name.replace('.pdf', '');
+            link.download = `${safeBase}_page_${currentPage}.jpg`;
             link.href = result.dataUrl;
             link.click();
             
@@ -228,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             setTimeout(() => {
                 if (statusMessage.innerHTML.includes('downloaded successfully')) {
-                    statusMessage.innerHTML = '';
+                    statusMessage.textContent = '';
                 }
             }, 3000);
             
@@ -261,7 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const zip = new JSZip();
-            const folder = zip.folder(`${currentFile.name.replace('.pdf', '')}_images`);
+            const safeBase = typeof Security !== 'undefined' ? Security.sanitizeFileName(currentFile.name.replace('.pdf', '')) : currentFile.name.replace('.pdf', '');
+            const folder = zip.folder(`${safeBase}_images`);
             
             for (let i = 0; i < pagesToConvert.length; i++) {
                 const pageNum = pagesToConvert[i];
@@ -275,12 +277,15 @@ document.addEventListener('DOMContentLoaded', () => {
             statusMessage.innerHTML = 'Creating ZIP file... <i class="ph-bold ph-spinner ph-spin"></i>';
             
             const zipBlob = await zip.generateAsync({ type: 'blob' });
-            const url = URL.createObjectURL(zipBlob);
+            const url = typeof Security !== 'undefined' ? Security.createObjectURL(zipBlob) : URL.createObjectURL(zipBlob);
             const link = document.createElement('a');
-            link.download = `${currentFile.name.replace('.pdf', '')}_images.zip`;
+            link.download = `${safeBase}_images.zip`;
             link.href = url;
             link.click();
-            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(url);
+                else URL.revokeObjectURL(url);
+            }, 1000);
             
             statusMessage.innerHTML = `<i class="ph-fill ph-check-circle" style="color:#10B981;"></i> Downloaded ${pagesToConvert.length} pages as ZIP!`;
             statusMessage.style.color = '#10B981';
@@ -317,8 +322,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (typeof Security !== 'undefined') {
+            try {
+                Security.enforceSafeSize(file);
+            } catch (err) {
+                alert(err.message);
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Invalid file format. The file content does not match PDF format.');
+                return;
+            }
+        }
+
         currentFile = file;
-        fileNameDisplay.textContent = file.name;
+        fileNameDisplay.textContent = typeof Security !== 'undefined' ? Security.sanitizeFileName(file.name) : file.name;
         dropZone.classList.add('hidden');
 
         try {
@@ -333,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await renderPreview(currentPage);
             updatePageIndicator();
             
-            statusMessage.innerHTML = '';
+            statusMessage.textContent = '';
             
         } catch (error) {
             console.error(error);

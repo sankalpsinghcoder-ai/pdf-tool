@@ -235,7 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await convertPageToPng(currentPage);
             
             const link = document.createElement('a');
-            link.download = `${currentFile.name.replace('.pdf', '')}_page_${currentPage}.png`;
+            const safeBase = typeof Security !== 'undefined' ? Security.sanitizeFileName(currentFile.name.replace('.pdf', '')) : currentFile.name.replace('.pdf', '');
+            link.download = `${safeBase}_page_${currentPage}.png`;
             link.href = result.dataUrl;
             link.click();
             
@@ -277,7 +278,8 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const zip = new JSZip();
-            const folderName = `${currentFile.name.replace('.pdf', '')}_png_images`;
+            const safeBase = typeof Security !== 'undefined' ? Security.sanitizeFileName(currentFile.name.replace('.pdf', '')) : currentFile.name.replace('.pdf', '');
+            const folderName = `${safeBase}_png_images`;
             const folder = zip.folder(folderName);
             
             for (let i = 0; i < pagesToConvert.length; i++) {
@@ -292,12 +294,15 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatus('Creating ZIP file...');
             
             const zipBlob = await zip.generateAsync({ type: 'blob' });
-            const url = URL.createObjectURL(zipBlob);
+            const url = typeof Security !== 'undefined' ? Security.createObjectURL(zipBlob) : URL.createObjectURL(zipBlob);
             const link = document.createElement('a');
-            link.download = `${currentFile.name.replace('.pdf', '')}_png_images.zip`;
+            link.download = `${safeBase}_png_images.zip`;
             link.href = url;
             link.click();
-            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                if (typeof Security !== 'undefined') Security.revokeObjectURL(url);
+                else URL.revokeObjectURL(url);
+            }, 1000);
             
             showSuccess(`Downloaded ${pagesToConvert.length} PNG image${pagesToConvert.length > 1 ? 's' : ''} as ZIP!`);
             
@@ -338,8 +343,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (typeof Security !== 'undefined') {
+            try {
+                Security.enforceSafeSize(file);
+            } catch (err) {
+                alert(err.message);
+                return;
+            }
+            const isValid = await Security.validateFileMagic(file, 'pdf');
+            if (!isValid) {
+                alert('Invalid file format. The file content does not match PDF format.');
+                return;
+            }
+        }
+
         currentFile = file;
-        fileNameDisplay.textContent = file.name;
+        fileNameDisplay.textContent = typeof Security !== 'undefined' ? Security.sanitizeFileName(file.name) : file.name;
         dropZone.classList.add('hidden');
 
         try {
