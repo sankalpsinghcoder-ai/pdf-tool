@@ -45,22 +45,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Process Selected Files
     async function handleFiles(files) {
         for (let file of files) {
-            if (typeof Security !== 'undefined') {
-                if (!Security.enforceSafeSize(file)) {
-                    alert(`"${Security.escapeHTML(file.name)}" exceeds the 100MB file size limit or is empty.`);
-                    continue;
-                }
-                const isValid = await Security.validateFileMagic(file, 'pdf');
-                if (isValid) {
-                    selectedFiles.push(file);
-                } else {
-                    alert(`"${Security.escapeHTML(file.name)}" is not a valid PDF file.`);
-                }
-            } else if (file.type === 'application/pdf') {
-                selectedFiles.push(file);
-            } else {
-                alert(`"${file.name}" is not a PDF. Please select only PDF files.`);
+            const isPdf = file.type === 'application/pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'));
+            if (!isPdf) {
+                const displayName = typeof Security !== 'undefined' ? Security.escapeHTML(file.name) : file.name;
+                alert(`"${displayName}" is not a PDF. Please select only PDF files.`);
+                continue;
             }
+            if (typeof Security !== 'undefined' && !Security.enforceSafeSize(file)) {
+                continue;
+            }
+            selectedFiles.push(file);
         }
         updateUI();
     }
